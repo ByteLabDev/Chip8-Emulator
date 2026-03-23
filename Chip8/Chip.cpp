@@ -3,7 +3,9 @@
 #include "Chip.h"
 #include <stdio.h>
 
-void Chip::init() {
+void Chip::init(Screen& screenPtr) {
+	this -> screen = &screenPtr;
+
 	memset(memory, 0, sizeof(memory));
 	memset(V, 0, sizeof(V));
 	memset(stack, 0, sizeof(stack));
@@ -15,6 +17,31 @@ void Chip::init() {
 	stackPointer = 0;
 	delayTimer = 0;
 	soundTimer = 0;
+
+	// Programs may also refer to a group of sprites representing the hexadecimal digits 0 through F.
+	// These sprites are 5 bytes long, or 8x5 pixels. The data should be stored in the interpreter area of Chip-8 memory (0x000 to 0x1FF).
+	// Below is a listing of each character's bytes, in binary and hexadecimal:
+
+	uint8_t fontset[80] = {
+		0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+		0x20, 0x60, 0x20, 0x20, 0x70, // 1
+		0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+		0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+		0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+		0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+		0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+		0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+		0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+		0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+		0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+		0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+		0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+		0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+		0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+		0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+	};
+
+	memcpy(memory, fontset, sizeof(fontset));
 }
 
 bool Chip::loadProgram(const std::string& filename) {
@@ -53,41 +80,27 @@ bool Chip::loadProgram(const std::string& filename) {
 void Chip::run() {
 	// Fetch opcode
 	uint16_t opcode = (memory[programCounter] << 8) | memory[programCounter + 1];
-	std::printf("Opcode: 0x%04X\n", opcode);
+	std::printf("PC: 0x%03X | Opcode: 0x%04X\n", programCounter, opcode);
 
 	programCounter += 2;
 
 	// Decode opcode
-
-	uint8_t arg1 = (opcode & 0xF000) >> 12;
-	uint8_t arg2 = (opcode & 0x0F00) >> 8;
-	uint8_t arg3 = (opcode & 0x00F0) >> 4;
-	uint8_t arg4 = (opcode & 0x000F);
-
-	//std::printf("Opcode 1: 0x%04X\n", arg1);
-
-	//std::printf("Opcode 2: 0x%04X\n", arg2);
-
-	//std::printf("Opcode 3: 0x%04X\n", arg3);
-
-	//std::printf("Opcode 4: 0x%04X\n", arg4);
-
-	uint8_t op = (opcode & 0xF000) >> 12;
-	uint8_t x = (opcode & 0x0F00) >> 8;
-	uint8_t y = (opcode & 0x00F0) >> 4;
-	uint8_t n = (opcode & 0x000F);
-	uint8_t kk = (opcode & 0x00FF);
-	uint8_t nnn = (opcode & 0x0FFF);
+	uint16_t op = (opcode & 0xF000) >> 12; // 16 bits
+	uint8_t x = (opcode & 0x0F00) >> 8; // 4 bits
+	uint8_t y = (opcode & 0x00F0) >> 4; // 4 bits
+	uint8_t n = (opcode & 0x000F); // 4 bits
+	uint8_t kk = (opcode & 0x00FF); // 8 bits
+	uint16_t nnn = (opcode & 0x0FFF); // 16 bits
 
 	// SYS addr
 	if (op == 0x0) {
 		// Ignored by modern interpreters
-		return;
+		//return;
 	}
 
 	// CLS (0x00E0)
 	if (opcode == 0x00E0) {
-		// Add later
+		screen->clear();
 		return;
 	}
 
@@ -107,9 +120,9 @@ void Chip::run() {
 	// CALL addr
 	if (op == 0x2) {
 		if (stackPointer < 15) {
-			stack[stackPointer] = programCounter + 2; // Put the PC on top of the stack (2 bytes ahead = 1 instruction ahead)
+			stack[stackPointer] = programCounter; // Put the PC on top of the stack (2 bytes ahead = 1 instruction ahead)
 			stackPointer++;
-			programCounter = opcode & 0x0FFF;
+			programCounter = nnn;
 		}
 		else {
 			std::cerr << "Stack Overflow" << std::endl;
@@ -207,7 +220,110 @@ void Chip::run() {
 			}
 		}
 
-		// TODO: Use switch-case for op, finish rest of opcodes, access screen through chip.
+		return;
+	}
+
+	// TODO: Use switch-case for op, finish rest of opcodes, access screen through chip.
+
+	// SNE Vx, Vy (9xy0)
+	if (op == 0x9) {
+		if (V[x] != V[y]) {
+			programCounter += 2;
+		}
+		return;
+	}
+
+	// LD I, addr (Annn)
+	if (op == 0xA) {
+		I = nnn;
+		return;
+	}
+
+	// JP V0, addr (Bnnn)
+	if (op == 0xB) {
+		programCounter = nnn + V[0];
+		return;
+	}
+
+	// RND Vx, byte (Cxkk)
+	if (op == 0xC) {
+		uint8_t randNumber = rand() % 256; // Generates random number between 0 and 255
+		V[x] = (randNumber & kk);
+		return;
+	}
+
+	// DRW Vx, Vy, nibble (Dxyn)
+	if (op == 0xD) {
+		V[0xF] = 0; // Set to 0 if no XOR is detected
+		for (int row = 0; row < n; row++) {
+			uint8_t spriteByte = memory[I + row];
+			for (int col = 0; col < 8; col++) {
+				if ((spriteByte & (0x80 >> col)) != 0) { // Check if the pixel is on
+					if (screen->setPixel(V[x] + col, V[y] + row)) { // XOR detected
+						V[0xF] = 1; // Collision detected
+					}
+				}
+			}
+		}
+		return;
+	}
+
+	// SKP Vx (Ex9E)
+	if (op == 0xE) {
+		// TODO
+		return;
+	}
+
+	if (op == 0xF) {
+		switch (kk) {
+			case 0x07: { // Fx07 - LD Vx, DT
+				V[x] = delayTimer;
+				break;
+			}
+			case 0x0A: { // Fx0A - LD Vx, K
+				// TODO (Keypress)
+				break;
+			}
+			case 0x15: { // Fx15 - LD DT, Vx
+				delayTimer = V[x];
+				break;
+			}
+			case 0x18: { //  Fx18 - LD ST, Vx
+				soundTimer = V[x];
+				break;
+			}
+			case 0x1E: { // Fx1E - ADD I, Vx
+				I = I + V[x];
+				break;
+			}
+			case 0x29: { // Fx29 - LD F, Vx
+				I = V[x] * 5;
+				break;
+			}
+			case 0x33: { // Fx33 - LD B, Vx
+				uint8_t ones = V[x] % 10;
+				uint8_t tens = (V[x] / 10) % 10;
+				uint8_t hundreds = (V[x] / 100) % 10;
+
+				memory[I] = hundreds;
+				memory[I + 1] = tens;
+				memory[I + 2] = ones;
+				break;
+			}
+			case 0x55: { // Fx55 - LD [I], Vx
+				for (int i = 0; i <= x; i++) {
+					memory[I + i] = V[i];
+				}
+				break;
+			}
+			case 0x65: { // Fx65 - LD Vx, [I]
+				for (int i = 0; i <= x; i++) {
+					V[i] = memory[I + i];
+				}
+				break;
+			}
+		}
+		return;
 	}
 
 	// LX Vx, byte (6xkk)

@@ -21,7 +21,7 @@ int main()
 		return -1;
 	}
 
-	chip.init();
+	chip.init(screen);
 
 	if (!chip.loadProgram("./Pong_alt.ch8")) {
 		std::cerr << "Failed to load ROM" << std::endl;
@@ -64,10 +64,8 @@ int main()
 		chip.run();
 		screen.draw();
 
-		SDL_Delay(1000 / 60); // Refresh at 60 fps
+		SDL_Delay(1); // Refresh at 1000hz
 	}
-
-	system("Pause");
 
 	return 0;
 }

@@ -21,16 +21,29 @@ bool Screen::init() {
 }
 
 void Screen::clear() {
-
+	for (int i = 0; i < width * height; i++) {
+		pixels[i] = 0x000000FF;
+	}
 }
 
-void Screen::setPixel(uint32_t index, bool state) {
-	uint32_t x = index % width;
-	uint32_t y = index / width;
+bool Screen::setPixel(uint32_t x, uint32_t y) {
+    // 1. Handle wrapping (standard CHIP-8 behavior)
+    x %= width;
+    y %= height;
+    uint32_t index = x + (y * width);
 
-	if (index < width * height) {
-		pixels[index] = state ? 0xFFFFFFFF : 0x000000FF;
-	}
+    // 2. Check if the current pixel is "on" (White)
+    // Assuming 0xFFFFFFFF is White and 0x000000FF is Black
+    bool currentPixelOn = (pixels[index] == 0xFFFFFFFF);
+
+    // 3. XOR logic: If the pixel was on, it now turns off (and vice-versa)
+    if (currentPixelOn) {
+        pixels[index] = 0x000000FF; // Turn Off
+        return true; // Collision occurred (pixel flipped from on to off)
+    } else {
+        pixels[index] = 0xFFFFFFFF; // Turn On
+        return false; // No collision
+    }
 }
 
 void Screen::draw() {

@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdint>
 #include <iostream>
+#include "Screen.h"
 
 class Chip
 {
@@ -25,8 +26,10 @@ class Chip
 		// The original implementation of the Chip-8 language used a 64x32-pixel monochrome display
 		uint8_t display[64 * 32];
 
+		Screen* screen;
+
 	public:
-		void init();
+		void init(Screen& screenPtr);
 		void run();
 		bool loadProgram(const std::string& filename);
 };
