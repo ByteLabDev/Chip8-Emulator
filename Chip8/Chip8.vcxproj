@@ -128,11 +128,15 @@
   <ItemGroup>
     <ClCompile Include="Chip.cpp" />
     <ClCompile Include="Chip8.cpp" />
+    <ClCompile Include="Keypad.cpp" />
     <ClCompile Include="Screen.cpp" />
+    <ClCompile Include="Sound.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Chip.h" />
+    <ClInclude Include="Keypad.h" />
     <ClInclude Include="Screen.h" />
+    <ClInclude Include="Sound.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

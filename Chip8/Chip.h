@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <iostream>
 #include "Screen.h"
+#include "Keypad.h"
+#include "Sound.h"
 
 class Chip
 {
@@ -16,10 +18,11 @@ class Chip
 		uint16_t stack[16]; // The stack is an array of 16 16-bit values, used to store the address that the interpreter shoud return to when finished with a subroutine. 
 		// Chip-8 allows for up to 16 levels of nested subroutines.
 		uint8_t stackPointer; // (SP) (8 bits) - Points to topmost level of stack
+		uint8_t delayTimer;
+		uint8_t soundTimer;
 
-		// I don't know how large the timers need to be, so I will use int for now.
-		int delayTimer;
-		int soundTimer;
+		uint16_t dtDeltaTime;
+		uint16_t stDeltaTime;
 
 		uint8_t keys[16];
 
@@ -27,9 +30,13 @@ class Chip
 		uint8_t display[64 * 32];
 
 		Screen* screen;
+		Keypad* keypad;
+		Sound* sound;
 
 	public:
-		void init(Screen& screenPtr);
+		void init(Screen& screenPtr, Keypad& keypadPtr, Sound& soundPtr);
 		void run();
 		bool loadProgram(const std::string& filename);
+		void runTimers(uint8_t deltaTime);
+		bool drawFlag;
 };

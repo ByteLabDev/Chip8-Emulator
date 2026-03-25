@@ -5,7 +5,12 @@ bool Screen::init() {
 		return false;
 	}
 
-	window = SDL_CreateWindow("CHIP-8 Emulator", 1024, 512, 0);
+	outRect.x = 0.0f;
+	outRect.y = 0.0f;
+	outRect.w = windowWidth;
+	outRect.h = windowHeight;
+
+	window = SDL_CreateWindow("CHIP-8 Emulator", windowWidth, windowHeight, 0);
 	renderer = SDL_CreateRenderer(window, NULL);
 
 	texture = SDL_CreateTexture(renderer,
@@ -22,8 +27,9 @@ bool Screen::init() {
 
 void Screen::clear() {
 	for (int i = 0; i < width * height; i++) {
-		pixels[i] = 0x000000FF;
+		pixels[i] = offColor;
 	}
+	std::fill(pixels, pixels + (width * height), offColor);
 }
 
 bool Screen::setPixel(uint32_t x, uint32_t y) {
@@ -34,14 +40,14 @@ bool Screen::setPixel(uint32_t x, uint32_t y) {
 
     // 2. Check if the current pixel is "on" (White)
     // Assuming 0xFFFFFFFF is White and 0x000000FF is Black
-    bool currentPixelOn = (pixels[index] == 0xFFFFFFFF);
+    bool currentPixelOn = (pixels[index] == onColor);
 
     // 3. XOR logic: If the pixel was on, it now turns off (and vice-versa)
     if (currentPixelOn) {
-        pixels[index] = 0x000000FF; // Turn Off
+        pixels[index] = offColor; // Turn Off
         return true; // Collision occurred (pixel flipped from on to off)
     } else {
-        pixels[index] = 0xFFFFFFFF; // Turn On
+        pixels[index] = onColor; // Turn On
         return false; // No collision
     }
 }
@@ -50,7 +56,7 @@ void Screen::draw() {
 	// Upload the pixel array to the GPU and draw
 	SDL_UpdateTexture(texture, NULL, pixels, 128 * sizeof(uint32_t));
 	SDL_RenderClear(renderer);
-	SDL_RenderTexture(renderer, texture, NULL, NULL);
-	//SDL_RenderCopy(renderer, texture, NULL, NULL); // SDL scales it to window size automatically
+
+	SDL_RenderTexture(renderer, texture, NULL, &outRect);
 	SDL_RenderPresent(renderer);
 }

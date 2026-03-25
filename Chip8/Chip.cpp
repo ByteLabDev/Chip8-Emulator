@@ -3,8 +3,10 @@
 #include "Chip.h"
 #include <stdio.h>
 
-void Chip::init(Screen& screenPtr) {
+void Chip::init(Screen& screenPtr, Keypad& keypadPtr, Sound& soundPtr) {
 	this -> screen = &screenPtr;
+	this -> keypad = &keypadPtr;
+	this -> sound = &soundPtr;
 
 	memset(memory, 0, sizeof(memory));
 	memset(V, 0, sizeof(V));
@@ -17,6 +19,7 @@ void Chip::init(Screen& screenPtr) {
 	stackPointer = 0;
 	delayTimer = 0;
 	soundTimer = 0;
+	drawFlag = false;
 
 	// Programs may also refer to a group of sprites representing the hexadecimal digits 0 through F.
 	// These sprites are 5 bytes long, or 8x5 pixels. The data should be stored in the interpreter area of Chip-8 memory (0x000 to 0x1FF).
@@ -77,12 +80,33 @@ bool Chip::loadProgram(const std::string& filename) {
 	return true;
 }
 
+void Chip::runTimers(uint8_t deltaTime) {
+	// Both timers run at 60hz
+	dtDeltaTime += deltaTime;
+	stDeltaTime += deltaTime;
+	uint8_t timeBetweenIncrements = 17; // 16.667
+
+	if (dtDeltaTime >= timeBetweenIncrements) {
+		if(delayTimer > 0) delayTimer--;
+		dtDeltaTime = 0;
+	}
+	if (stDeltaTime >= timeBetweenIncrements) {
+		if (soundTimer > 0) soundTimer--;
+		stDeltaTime = 0;
+	}
+}
+
 void Chip::run() {
+	// Play sound
+	sound->update(soundTimer);
+
 	// Fetch opcode
 	uint16_t opcode = (memory[programCounter] << 8) | memory[programCounter + 1];
-	std::printf("PC: 0x%03X | Opcode: 0x%04X\n", programCounter, opcode);
+	//std::printf("PC: 0x%03X | Opcode: 0x%04X\n", programCounter, opcode);
 
 	programCounter += 2;
+
+	drawFlag = false;
 
 	// Decode opcode
 	uint16_t op = (opcode & 0xF000) >> 12; // 16 bits
@@ -101,6 +125,7 @@ void Chip::run() {
 	// CLS (0x00E0)
 	if (opcode == 0x00E0) {
 		screen->clear();
+		drawFlag = true;
 		return;
 	}
 
@@ -117,7 +142,7 @@ void Chip::run() {
 		return;
 	}
 
-	// CALL addr
+	// CALL addr (2nnn)
 	if (op == 0x2) {
 		if (stackPointer < 15) {
 			stack[stackPointer] = programCounter; // Put the PC on top of the stack (2 bytes ahead = 1 instruction ahead)
@@ -254,6 +279,7 @@ void Chip::run() {
 
 	// DRW Vx, Vy, nibble (Dxyn)
 	if (op == 0xD) {
+		drawFlag = true;
 		V[0xF] = 0; // Set to 0 if no XOR is detected
 		for (int row = 0; row < n; row++) {
 			uint8_t spriteByte = memory[I + row];
@@ -270,7 +296,11 @@ void Chip::run() {
 
 	// SKP Vx (Ex9E)
 	if (op == 0xE) {
-		// TODO
+		uint8_t key = V[x];
+		if (keypad->keyStates[key]) {
+			// True = Down, False = Up
+			programCounter += 2;
+		}
 		return;
 	}
 
@@ -281,7 +311,12 @@ void Chip::run() {
 				break;
 			}
 			case 0x0A: { // Fx0A - LD Vx, K
-				// TODO (Keypress)
+				bool hasKeyPress = false;
+				std::cout << "Waiting for keypress" << std::endl;
+				while (!hasKeyPress) {
+					uint8_t key = keypad->read();
+					std::cout << key << std::endl;
+				}
 				break;
 			}
 			case 0x15: { // Fx15 - LD DT, Vx
