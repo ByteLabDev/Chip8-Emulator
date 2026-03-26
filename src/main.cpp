@@ -2,7 +2,7 @@
 //
 // Main reference:
 // http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
-// Other references
+// Additional references
 // https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Technical-Reference
 // https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
 // https://github.com/Johnnei/Youtube-Tutorials/tree/master/emulator_chip8
@@ -12,6 +12,7 @@
 #include "Screen.h"
 #include "Keypad.h"
 #include "Sound.h"
+#include "Menu.h"
 
 int main()
 {
@@ -32,26 +33,54 @@ int main()
 
 	chip.init(screen, keypad, sound);
 
-	if (!chip.loadProgram("./Pong_alt.ch8")) {
-		std::cerr << "Failed to load ROM" << std::endl;
-		return -1;
-	}
-
 	screen.clear();
+	screen.updateTexture();
+	screen.draw();
 
 	bool quit = false;
 	SDL_Event event;
 	while (!quit) {
 		while (SDL_PollEvent(&event)) {
+			ImGui_ImplSDL3_ProcessEvent(&event);
 			if (event.type == SDL_EVENT_QUIT) quit = true;
 		}
 
 		keypad.read();
 		chip.runTimers(1);
 		chip.run();
-		screen.draw();
 
-		SDL_Delay(1); // Refresh at 1000hz
+		if(chip.drawFlag){
+			screen.updateTexture();
+		}
+
+		Menu::ScreenAction action = screen.draw();
+
+		switch (action) {
+			case Menu::ScreenAction::OpenROM: {
+				chip.reset();
+				screen.updateTexture();
+				screen.draw();
+				std::string filePath = Menu::openFileDialog();
+				if (!chip.loadProgram(filePath)) {
+					std::cerr << "Failed to load ROM at " << filePath.c_str() << std::endl;
+				}
+				break;
+			}
+			case Menu::ScreenAction::Quit: {
+				quit = true;
+				break;
+			}
+			case Menu::ScreenAction::Reset: {
+				std::string filePath = chip.romPath;
+				chip.reset();
+				screen.updateTexture();
+				screen.draw();
+				chip.loadProgram(filePath);
+				break;
+			}
+		}
+
+		SDL_Delay(2); // Refresh at 500hz
 	}
 	return 0;
 }

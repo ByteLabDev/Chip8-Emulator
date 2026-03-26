@@ -11,7 +11,6 @@ void Chip::init(Screen& screenPtr, Keypad& keypadPtr, Sound& soundPtr) {
 	memset(memory, 0, sizeof(memory));
 	memset(V, 0, sizeof(V));
 	memset(stack, 0, sizeof(stack));
-	memset(keys, 0, sizeof(keys));
 	memset(display, 0, sizeof(display));
 
 	I = 0;
@@ -20,29 +19,7 @@ void Chip::init(Screen& screenPtr, Keypad& keypadPtr, Sound& soundPtr) {
 	delayTimer = 0;
 	soundTimer = 0;
 	drawFlag = false;
-
-	// Programs may also refer to a group of sprites representing the hexadecimal digits 0 through F.
-	// These sprites are 5 bytes long, or 8x5 pixels. The data should be stored in the interpreter area of Chip-8 memory (0x000 to 0x1FF).
-	// Below is a listing of each character's bytes, in binary and hexadecimal:
-
-	uint8_t fontset[80] = {
-		0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-		0x20, 0x60, 0x20, 0x20, 0x70, // 1
-		0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-		0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-		0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-		0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-		0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-		0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-		0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-		0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-		0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-		0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-		0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-		0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-		0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-		0xF0, 0x80, 0xF0, 0x80, 0x80, // F
-	};
+	isKeyDown = false;
 
 	memcpy(memory, fontset, sizeof(fontset));
 }
@@ -77,7 +54,28 @@ bool Chip::loadProgram(const std::string& filename) {
 
 	delete[] buffer;
 
+	romPath = filename;
+
 	return true;
+}
+
+void Chip::reset() {
+	memset(memory, 0, sizeof(memory));
+	memset(V, 0, sizeof(V));
+	memset(stack, 0, sizeof(stack));
+	memset(display, 0, sizeof(display));
+
+	I = 0;
+	programCounter = 0x200; // Most Chip-8 programs start at location 0x200 (512), but some begin at 0x600 (1536). Programs beginning at 0x600 are intended for the ETI 660 computer.
+	stackPointer = 0;
+	delayTimer = 0;
+	soundTimer = 0;
+	drawFlag = false;
+	isKeyDown = false;
+
+	memcpy(memory, fontset, sizeof(fontset));
+
+	screen->clear();
 }
 
 void Chip::runTimers(uint8_t deltaTime) {
@@ -311,12 +309,27 @@ void Chip::run() {
 				break;
 			}
 			case 0x0A: { // Fx0A - LD Vx, K
-				bool hasKeyPress = false;
-				std::cout << "Waiting for keypress" << std::endl;
-				while (!hasKeyPress) {
-					uint8_t key = keypad->read();
-					std::cout << key << std::endl;
+				programCounter -= 2; // Go back 1 instruction to repeat this one (prevents program from hanging).
+
+				bool localIsKeyDown = false;
+
+				for (int i = 0; i < 16; i++) {
+					if (keypad->keyStates[i]) { // Key is down
+						downKey = i;
+						localIsKeyDown = true;
+						break;
+					}
 				}
+
+				if (isKeyDown && !localIsKeyDown) {
+					// Key has been released, break the loop.
+					programCounter += 2; // Go forward 1 instruction (break the loop).
+					V[x] = downKey;
+					std::cout << "Keypress received" << std::endl;
+				}
+
+				isKeyDown = localIsKeyDown;
+
 				break;
 			}
 			case 0x15: { // Fx15 - LD DT, Vx

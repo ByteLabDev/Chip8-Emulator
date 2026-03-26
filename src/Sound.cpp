@@ -1,7 +1,7 @@
 #include "Sound.h"
 
 bool Sound::init() {
-    // 1. Define the format (SDL3 Specs are simpler)
+    // 1. Define the format
     SDL_AudioSpec spec;
     spec.format = SDL_AUDIO_S16;
     spec.channels = 1;
@@ -51,7 +51,6 @@ void Sound::update(int soundTimer) {
         SDL_ResumeAudioStreamDevice(stream);
     }
     else {
-        //SDL_ClearAudioStream(stream);
         SDL_PauseAudioStreamDevice(stream);
     }
 }

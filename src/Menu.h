@@ -1,0 +1,18 @@
+#pragma once
+#include <windows.h>
+#include <shobjidl.h> 
+#include <string>
+#include <cstdint>
+#include <iostream>
+
+class Menu {
+	public:
+		enum class ScreenAction {
+			None,
+			Quit,
+			OpenROM,
+			Reset
+		};
+
+		static std::string openFileDialog();
+};
