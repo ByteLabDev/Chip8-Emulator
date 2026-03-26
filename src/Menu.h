@@ -4,6 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <iostream>
+#include <sstream>
 
 class Menu {
 	public:

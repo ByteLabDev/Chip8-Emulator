@@ -26,6 +26,7 @@ FetchContent_GetProperties(imgui SOURCE_DIR IMGUI_SOURCE_DIR)
 # 3. Define Source Files (Including ImGui core and backends)
 set(SOURCE_FILES 
     src/main.cpp 
+    src/Menu.cpp 
     src/Screen.cpp 
     src/Sound.cpp 
     src/Chip.cpp
@@ -36,13 +37,11 @@ set(SOURCE_FILES
     ${IMGUI_SOURCE_DIR}/imgui_widgets.cpp
     ${IMGUI_SOURCE_DIR}/imgui_tables.cpp
     ${IMGUI_SOURCE_DIR}/imgui_demo.cpp
-    # ImGui Backends (The missing pieces)
     ${IMGUI_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
-    ${IMGUI_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp # <--- ADD THIS LINE
- "src/Menu.cpp" "src/Menu.h")
+    ${IMGUI_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp)
 
 # 4. Create the executable
-add_executable(chip8 ${SOURCE_FILES} "src/Menu.cpp" "src/Menu.h")
+add_executable(chip8 WIN32 ${SOURCE_FILES})
 
 # 5. Setup Include Directories for ImGui
 target_include_directories(chip8 PRIVATE 
@@ -60,4 +59,11 @@ if(WIN32)
         $<TARGET_FILE:SDL3::SDL3>
         $<TARGET_FILE_DIR:chip8>
     )
+endif()
+
+install(TARGETS chip8 RUNTIME DESTINATION bin)
+if(TARGET SDL3::SDL3-shared)
+    install(FILES $<TARGET_FILE:SDL3::SDL3-shared> DESTINATION bin)
+elseif(TARGET SDL3::SDL3)
+    install(FILES $<TARGET_FILE:SDL3::SDL3> DESTINATION bin)
 endif()

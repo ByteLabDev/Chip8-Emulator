@@ -1,7 +1,4 @@
-#include <fstream>
-#include <iostream>
 #include "Chip.h"
-#include <stdio.h>
 
 void Chip::init(Screen& screenPtr, Keypad& keypadPtr, Sound& soundPtr) {
 	this -> screen = &screenPtr;
@@ -41,18 +38,16 @@ bool Chip::loadProgram(const std::string& filename) {
 		return false;
 	}
 
-	char* buffer = new char[size];
+	std::vector<char> buffer(size);
 
 	file.seekg(0, std::ios::beg);
-	file.read(buffer, size);
+	file.read(buffer.data(), size);
 	file.close();
 
 	// Load the buffer into the Chip's memory starting at 0x200
 	for (int i = 0; i < size; ++i) {
 		memory[0x200 + i] = static_cast<uint8_t>(buffer[i]);
 	}
-
-	delete[] buffer;
 
 	romPath = filename;
 

@@ -7,6 +7,7 @@
 // https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
 // https://github.com/Johnnei/Youtube-Tutorials/tree/master/emulator_chip8
 
+#define SDL_MAIN_HANDLED
 #include <iostream>
 #include "Chip.h"
 #include "Screen.h"
@@ -14,7 +15,7 @@
 #include "Sound.h"
 #include "Menu.h"
 
-int main()
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) // https://stackoverflow.com/a/78518706
 {
 	Chip chip;
 	Screen screen;

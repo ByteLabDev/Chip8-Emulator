@@ -1,5 +1,4 @@
 #include "Screen.h"
-#include <sstream>
 
 bool Screen::init() {
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {

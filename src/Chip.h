@@ -5,6 +5,9 @@
 #include "Screen.h"
 #include "Keypad.h"
 #include "Sound.h"
+#include <fstream>
+#include <stdio.h>
+#include <vector>
 
 class Chip
 {

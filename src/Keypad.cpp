@@ -1,7 +1,4 @@
 #include "Keypad.h"
-#include <SDL3/SDL.h>
-#include <iostream>
-#include <stdio.h>
 
 uint8_t Keypad::read() {
     const bool* key_states = SDL_GetKeyboardState(NULL);
