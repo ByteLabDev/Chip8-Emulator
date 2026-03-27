@@ -1,6 +1,15 @@
 # Chip-8 Emulator
 A C++ Chip-8 emulator
 
+## Installation & Running
+1. Download the latest release [here](https://github.com/ByteLabDev/Chip8-Emulator/releases/latest).
+2. Extract the folder, open chip8/chip8.exe
+3. Navigate to the menu bar: **File > Load ROM**
+    - Select any `.ch8`, `.rom`, or `.bin` file to start.
+
+> [!TIP]
+> You can find Chip-8 ROMs [here](https://github.com/kripod/chip8-roms).
+
 ## Building
 ### Clone the repo
 ```
