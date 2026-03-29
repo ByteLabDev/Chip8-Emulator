@@ -34,12 +34,25 @@ int main(int argc, const char* argv[])
 
 	chip.init(screen, keypad, sound, Chip::ChipType::Chip_8);
 
+	SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
+
 	bool quit = false;
 	SDL_Event event;
 	while (!quit) {
 		while (SDL_PollEvent(&event)) {
 			ImGui_ImplSDL3_ProcessEvent(&event);
 			if (event.type == SDL_EVENT_QUIT) quit = true;
+
+			if (event.type == SDL_EVENT_DROP_FILE) {
+				const char* droppedFilePath = event.drop.data;
+
+				if (droppedFilePath) {
+					chip.reset();
+					if (!chip.loadProgram(droppedFilePath)) {
+						std::cerr << "Failed to load ROM at " << droppedFilePath << std::endl;
+					}
+				}
+			}
 		}
 
 		keypad.read();
