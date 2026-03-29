@@ -2,12 +2,13 @@
 #include <cstring>
 #include <cstdint>
 #include <iostream>
-#include "Screen.h"
-#include "Keypad.h"
-#include "Sound.h"
 #include <fstream>
 #include <stdio.h>
 #include <vector>
+
+class Screen;
+class Keypad;
+class Sound;
 
 class Chip
 {
@@ -24,8 +25,8 @@ class Chip
 		uint8_t delayTimer;
 		uint8_t soundTimer;
 
-		uint16_t dtDeltaTime;
-		uint16_t stDeltaTime;
+		uint32_t dtDeltaTime;
+		uint32_t stDeltaTime;
 
 		// The original implementation of the Chip-8 language used a 64x32-pixel monochrome display
 		uint8_t display[64 * 32];
@@ -60,7 +61,13 @@ class Chip
 		};
 
 	public:
-		void init(Screen& screenPtr, Keypad& keypadPtr, Sound& soundPtr);
+		enum class ChipType {
+			Chip_8,
+			Super_Chip,
+			XO_Chip
+		};
+		ChipType chipType;
+		void init(Screen& screenPtr, Keypad& keypadPtr, Sound& soundPtr, ChipType chipType);
 		void run();
 		bool loadProgram(const std::string& filename);
 		void runTimers(uint8_t deltaTime);

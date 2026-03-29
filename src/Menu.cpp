@@ -1,4 +1,6 @@
 #include "Menu.h"
+#include "Chip.h"
+#include "Screen.h"
 
 std::string Menu::openFileDialog() {
     std::string filePath = "";
@@ -45,3 +47,53 @@ std::string Menu::openFileDialog() {
     CoUninitialize();
     return filePath;
 };
+
+Menu::ScreenAction Menu::getKeystrokeAction() {
+    Menu::ScreenAction action = Menu::ScreenAction::None;
+    const bool* keys = SDL_GetKeyboardState(NULL);
+    const SDL_Keymod mod = SDL_GetModState();
+
+    // Ctrl + O (Load ROM)
+    if ((mod & SDL_KMOD_CTRL) && keys[SDL_SCANCODE_O]) {
+        action = Menu::ScreenAction::OpenROM;
+    }
+    // Alt + F4 (Quit)
+    if ((mod & SDL_KMOD_ALT) && keys[SDL_SCANCODE_F4]) {
+        action = Menu::ScreenAction::Quit;
+    }
+    // Ctrl + R (Reset)
+    if ((mod & SDL_KMOD_CTRL) && keys[SDL_SCANCODE_R]) {
+        action = Menu::ScreenAction::Reset;
+    }
+
+    return action;
+}
+
+bool Menu::handleAction(Menu::ScreenAction action, Chip& chip, Screen& screen) {
+    switch (action) {
+        case Menu::ScreenAction::OpenROM: {
+            chip.reset();
+            screen.updateTexture();
+            screen.draw();
+            std::string filePath = Menu::openFileDialog();
+            if (!chip.loadProgram(filePath)) {
+                std::cerr << "Failed to load ROM at " << filePath.c_str() << std::endl;
+            }
+            break;
+        }
+        case Menu::ScreenAction::Quit: {
+            return true;
+            break;
+        }
+        case Menu::ScreenAction::Reset: {
+            std::string filePath = chip.romPath;
+            chip.reset();
+            screen.updateTexture();
+            screen.draw();
+            chip.loadProgram(filePath);
+            break;
+        }
+    }
+
+    return false;
+}

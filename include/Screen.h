@@ -8,6 +8,8 @@
 #include "imgui_impl_sdlrenderer3.h"
 #include "Menu.h"
 
+class Chip;
+
 class Screen
 {
 	public:
@@ -15,14 +17,20 @@ class Screen
 		static const uint8_t height = 64;
 		static const uint16_t windowWidth = 1024;
 		static const uint16_t windowHeight = 512;
-		bool init();
+		bool init(Chip& chipPtr);
 		bool setPixel(uint32_t x, uint32_t y);
 		void clear();
 		Menu::ScreenAction draw();
 		void updateTexture();
+		void setExtendedMode(bool mode);
+		void scrollLeft();
+		void scrollRight();
+		void scrollDown(int n);
 
 	private:
-		uint32_t pixels[width * height];
+		Chip* chip;
+		uint32_t pixels[width * height]; // Rendering
+		bool logicalPixels[width * height] = {}; // Game logic & collisions
 
 		SDL_Window* window = nullptr;
 		SDL_Renderer* renderer = nullptr;
@@ -32,5 +40,7 @@ class Screen
 		uint32_t onColor = 0x58A35AFF;
 		uint32_t offColor = 0x101410FF;
 
-		uint8_t resolutionMultiplier = 2;
+		bool hiRes = false;
+
+		bool showSettings = false;
 };

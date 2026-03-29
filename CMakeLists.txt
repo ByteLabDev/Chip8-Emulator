@@ -38,13 +38,21 @@ set(SOURCE_FILES
     ${IMGUI_SOURCE_DIR}/imgui_tables.cpp
     ${IMGUI_SOURCE_DIR}/imgui_demo.cpp
     ${IMGUI_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
-    ${IMGUI_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp)
+    ${IMGUI_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp
+    src/resources.rc
+)
 
 # 4. Create the executable
-add_executable(chip8 WIN32 ${SOURCE_FILES})
+add_executable(chip8 ${SOURCE_FILES})
+
+# Disable console window if not in debug mode (release)
+set_target_properties(chip8 PROPERTIES 
+    WIN32_EXECUTABLE $<IF:$<CONFIG:Debug>,FALSE,TRUE>
+)
 
 # 5. Setup Include Directories for ImGui
 target_include_directories(chip8 PRIVATE 
+    include
     ${IMGUI_SOURCE_DIR} 
     ${IMGUI_SOURCE_DIR}/backends
 )

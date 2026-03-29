@@ -8,21 +8,21 @@
 // https://github.com/Johnnei/Youtube-Tutorials/tree/master/emulator_chip8
 
 #define SDL_MAIN_HANDLED
+#include "Menu.h"
 #include <iostream>
 #include "Chip.h"
 #include "Screen.h"
 #include "Keypad.h"
 #include "Sound.h"
-#include "Menu.h"
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) // https://stackoverflow.com/a/78518706
+int main(int argc, const char* argv[])
 {
 	Chip chip;
 	Screen screen;
 	Keypad keypad;
 	Sound sound;
 
-	if (!screen.init()) {
+	if (!screen.init(chip)) {
 		std::cerr << "Failed to initialize SDL" << std::endl;
 		return -1;
 	}
@@ -32,7 +32,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 		return -1;
 	}
 
-	chip.init(screen, keypad, sound);
+	chip.init(screen, keypad, sound, Chip::ChipType::Chip_8);
 
 	screen.clear();
 	screen.updateTexture();
@@ -56,30 +56,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 
 		Menu::ScreenAction action = screen.draw();
 
-		switch (action) {
-			case Menu::ScreenAction::OpenROM: {
-				chip.reset();
-				screen.updateTexture();
-				screen.draw();
-				std::string filePath = Menu::openFileDialog();
-				if (!chip.loadProgram(filePath)) {
-					std::cerr << "Failed to load ROM at " << filePath.c_str() << std::endl;
-				}
-				break;
-			}
-			case Menu::ScreenAction::Quit: {
-				quit = true;
-				break;
-			}
-			case Menu::ScreenAction::Reset: {
-				std::string filePath = chip.romPath;
-				chip.reset();
-				screen.updateTexture();
-				screen.draw();
-				chip.loadProgram(filePath);
-				break;
-			}
-		}
+		Menu::handleAction(action, chip, screen);
+
+		action = Menu::getKeystrokeAction();
+
+		Menu::handleAction(action, chip, screen);
 
 		SDL_Delay(2); // Refresh at 500hz
 	}

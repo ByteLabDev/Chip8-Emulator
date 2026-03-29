@@ -1,9 +1,13 @@
 #include "Chip.h"
+#include "Screen.h"
+#include "Keypad.h"
+#include "Sound.h"
 
-void Chip::init(Screen& screenPtr, Keypad& keypadPtr, Sound& soundPtr) {
+void Chip::init(Screen& screenPtr, Keypad& keypadPtr, Sound& soundPtr, ChipType type) {
 	this -> screen = &screenPtr;
 	this -> keypad = &keypadPtr;
 	this -> sound = &soundPtr;
+	chipType = type;
 
 	memset(memory, 0, sizeof(memory));
 	memset(V, 0, sizeof(V));
@@ -109,12 +113,6 @@ void Chip::run() {
 	uint8_t kk = (opcode & 0x00FF); // 8 bits
 	uint16_t nnn = (opcode & 0x0FFF); // 16 bits
 
-	// SYS addr
-	if (op == 0x0) {
-		// Ignored by modern interpreters
-		//return;
-	}
-
 	// CLS (0x00E0)
 	if (opcode == 0x00E0) {
 		screen->clear();
@@ -192,13 +190,11 @@ void Chip::run() {
 				V[x] = V[y];
 				break;
 			}
-
 			case 0x1: {
 				// 8xy1 - OR Vx, Vy
 				V[x] = V[x] | V[y];
 				break;
 			}
-
 			case 0x2: { // 8xy2 - AND Vx, Vy
 				V[x] = V[x] & V[y];
 				break;
@@ -209,8 +205,8 @@ void Chip::run() {
 			}
 			case 0x4: { // 8xy4 - ADD Vx, Vy
 				uint16_t sum = V[x] + V[y];
-				V[0xF] = (sum > 255) ? 1 : 0;
 				V[x] = (uint8_t)(sum & 0xFF);
+				V[0xF] = (sum > 255) ? 1 : 0; // Set carry
 				break;
 			}
 			case 0x5: { // 8xy5 - SUB Vx, Vy
@@ -220,8 +216,9 @@ void Chip::run() {
 				break;
 			}
 			case 0x6: { // 8xy6 - SHR Vx {, Vy}
-				V[0xF] = V[x] & 0x1;
-				V[x] = V[x] / 2;
+				uint8_t lsb = V[x] & 0x1; // Least significant bit = 0x0000 0001
+				V[x] = (V[x] >> 1); // Divide by 2 by shifting right once
+				V[0xF] = lsb;
 				break;
 			}
 			case 0x7: { // 8xy7 - SUBN Vx, Vy
@@ -232,16 +229,15 @@ void Chip::run() {
 				break;
 			}
 			case 0xE: { // 8xyE - SHL Vx {, Vy}
-				V[0xF] = (V[x] & 0x80) >> 7;
+				uint8_t msb = V[x] & 0b10000000; // Most significant bit = 1000 0000
 				V[x] = V[x] * 2;
+				V[0xF] = (msb) >> 7; // 1000 0000
 				break;
 			}
 		}
 
 		return;
 	}
-
-	// TODO: Use switch-case for op, finish rest of opcodes, access screen through chip.
 
 	// SNE Vx, Vy (9xy0)
 	if (op == 0x9) {
@@ -288,9 +284,19 @@ void Chip::run() {
 	}
 
 	// SKP Vx (Ex9E)
-	if (op == 0xE) {
+	if (op == 0xE && kk == 0x9E) {
 		uint8_t key = V[x];
 		if (keypad->keyStates[key]) {
+			// True = Down, False = Up
+			programCounter += 2;
+		}
+		return;
+	}
+
+	// SKNP Vx (ExA1)
+	if (op == 0xE && kk == 0xA1) {
+		uint8_t key = V[x];
+		if (!keypad->keyStates[key]) {
 			// True = Down, False = Up
 			programCounter += 2;
 		}
@@ -320,7 +326,6 @@ void Chip::run() {
 					// Key has been released, break the loop.
 					programCounter += 2; // Go forward 1 instruction (break the loop).
 					V[x] = downKey;
-					std::cout << "Keypress received" << std::endl;
 				}
 
 				isKeyDown = localIsKeyDown;
@@ -374,4 +379,51 @@ void Chip::run() {
 		V[x] = kk;
 		return;
 	}
+
+	// This point forward, all the opcodes are for Super-Chip
+	// Reference: http://devernay.free.fr/hacks/chip8/schip.txt
+
+	// Todo: I'll finish these tomorrow.
+
+	if(chipType != ChipType::Super_Chip) return;
+
+	// 00CN*    Scroll display N lines down
+	if ((opcode & 0xFFF0) == 0x00C0) {
+		screen->scrollDown(n);
+		return;
+	}
+
+	// 00FB*    Scroll display 4 pixels right
+	if (opcode == 0x00FB) {
+		screen->scrollRight();
+		return;
+	}
+	
+	// 00FC*    Scroll display 4 pixels left
+	if (opcode == 0x00FC) {
+		screen->scrollLeft();
+		return;
+	}
+	
+	// 00FD*    Exit CHIP interpreter
+
+	// 00FE*    Disable extended screen mode
+	if (opcode == 0x00FE) {
+		screen->setExtendedMode(false);
+		return;
+	}
+
+	// 00FF*    Enable extended screen mode for full - screen graphics
+	if (opcode == 0x00FF) {
+		screen->setExtendedMode(true);
+		return;
+	}
+
+	// DXYN*    Show N-byte sprite from M(I) at coords (VX,VY), VF := collision.If N = 0 and extended mode, show 16x16 sprite.
+	
+	// FX30*    Point I to 10-byte font sprite for digit VX (0..9)
+
+	// FX75*    Store V0..VX in RPL user flags(X <= 7)
+
+	// FX85*    Read V0..VX from RPL user flags(X <= 7)
 }
