@@ -17,7 +17,7 @@
 
 int main(int argc, const char* argv[])
 {
-	Chip chip;
+	Chip chip = Chip();
 	Screen screen;
 	Keypad keypad;
 	Sound sound;
@@ -33,10 +33,6 @@ int main(int argc, const char* argv[])
 	}
 
 	chip.init(screen, keypad, sound, Chip::ChipType::Chip_8);
-
-	screen.clear();
-	screen.updateTexture();
-	screen.draw();
 
 	bool quit = false;
 	SDL_Event event;

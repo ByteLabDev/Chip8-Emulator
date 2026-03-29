@@ -7,12 +7,10 @@ void Chip::init(Screen& screenPtr, Keypad& keypadPtr, Sound& soundPtr, ChipType 
 	this -> screen = &screenPtr;
 	this -> keypad = &keypadPtr;
 	this -> sound = &soundPtr;
-	chipType = type;
 
-	memset(memory, 0, sizeof(memory));
-	memset(V, 0, sizeof(V));
-	memset(stack, 0, sizeof(stack));
-	memset(display, 0, sizeof(display));
+	memcpy(memory, fontset, sizeof(fontset));
+
+	memcpy(memory + 80, schip_fontset, sizeof(schip_fontset));
 
 	I = 0;
 	programCounter = 0x200; // Most Chip-8 programs start at location 0x200 (512), but some begin at 0x600 (1536). Programs beginning at 0x600 are intended for the ETI 660 computer.
@@ -21,8 +19,6 @@ void Chip::init(Screen& screenPtr, Keypad& keypadPtr, Sound& soundPtr, ChipType 
 	soundTimer = 0;
 	drawFlag = false;
 	isKeyDown = false;
-
-	memcpy(memory, fontset, sizeof(fontset));
 }
 
 bool Chip::loadProgram(const std::string& filename) {
@@ -73,8 +69,10 @@ void Chip::reset() {
 	isKeyDown = false;
 
 	memcpy(memory, fontset, sizeof(fontset));
+	memcpy(memory + 80, schip_fontset, sizeof(schip_fontset));
 
 	screen->clear();
+	screen->setExtendedMode(screen->hiRes);
 }
 
 void Chip::runTimers(uint8_t deltaTime) {
@@ -270,12 +268,30 @@ void Chip::run() {
 	if (op == 0xD) {
 		drawFlag = true;
 		V[0xF] = 0; // Set to 0 if no XOR is detected
-		for (int row = 0; row < n; row++) {
-			uint8_t spriteByte = memory[I + row];
-			for (int col = 0; col < 8; col++) {
-				if ((spriteByte & (0x80 >> col)) != 0) { // Check if the pixel is on
-					if (screen->setPixel(V[x] + col, V[y] + row)) { // XOR detected
-						V[0xF] = 1; // Collision detected
+		if (chipType == ChipType::Super_Chip && n == 0) {
+			for (int row = 0; row < 16; row++) {
+				// Read 2 bytes (16 bits) from memory for each row
+				uint8_t byte1 = memory[I + (row * 2)];
+				uint8_t byte2 = memory[I + (row * 2) + 1];
+				uint16_t spriteRow = (byte1 << 8) | byte2;
+
+				for (int col = 0; col < 16; col++) {
+					if ((spriteRow & (0x8000 >> col)) != 0) {
+						if (screen->setPixel(V[x] + col, V[y] + row, true)) {
+							V[0xF] = 1;
+						}
+					}
+				}
+			}
+		}
+		else {
+			for (int row = 0; row < n; row++) {
+				uint8_t spriteByte = memory[I + row];
+				for (int col = 0; col < 8; col++) {
+					if ((spriteByte & (0x80 >> col)) != 0) { // Check if the pixel is on
+						if (screen->setPixel(V[x] + col, V[y] + row, false)) { // XOR detected
+							V[0xF] = 1; // Collision detected
+						}
 					}
 				}
 			}
@@ -383,8 +399,6 @@ void Chip::run() {
 	// This point forward, all the opcodes are for Super-Chip
 	// Reference: http://devernay.free.fr/hacks/chip8/schip.txt
 
-	// Todo: I'll finish these tomorrow.
-
 	if(chipType != ChipType::Super_Chip) return;
 
 	// 00CN*    Scroll display N lines down
@@ -420,10 +434,27 @@ void Chip::run() {
 	}
 
 	// DXYN*    Show N-byte sprite from M(I) at coords (VX,VY), VF := collision.If N = 0 and extended mode, show 16x16 sprite.
+	// See DRW Vx, Vy, nibble (Dxyn)
 	
 	// FX30*    Point I to 10-byte font sprite for digit VX (0..9)
+	if ((opcode & 0xF0FF) == 0xF030) {
+		I = 80 + (V[x] * 10); // Large sprite sheet comes after small sprite sheet
+		return;
+	}
 
 	// FX75*    Store V0..VX in RPL user flags(X <= 7)
+	if ((opcode & 0xF0FF) == 0xF075) {
+		for (int i = 0; i <= x && i <= 7; i++) {
+			rplFlags[i] = V[i];
+		}
+		return;
+	}
 
 	// FX85*    Read V0..VX from RPL user flags(X <= 7)
+	if ((opcode & 0xF0FF) == 0xF085) {
+		for (int i = 0; i <= x && i <= 7; i++) {
+			V[i] = rplFlags[i];
+		}
+		return;
+	}
 }

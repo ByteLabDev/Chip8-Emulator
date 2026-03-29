@@ -28,6 +28,14 @@ bool Screen::init(Chip& chipPtr) {
 	ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
 	ImGui_ImplSDLRenderer3_Init(renderer);
 
+
+    clear();
+
+    setExtendedMode(false);
+
+    updateTexture();
+    draw();
+
 	return true;
 }
 
@@ -37,6 +45,16 @@ void Screen::clear() {
 
 void Screen::setExtendedMode(bool mode) {
     hiRes = mode;
+
+    if (texture) SDL_DestroyTexture(texture);
+
+    uint32_t tWidth = hiRes ? width : (width/2);
+    uint32_t tHeight = hiRes ? height : (height / 2);
+
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
+        SDL_TEXTUREACCESS_STREAMING, tWidth, tHeight);
+    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+    clear();
 }
 
 void Screen::scrollDown(int n) {
@@ -77,11 +95,18 @@ void Screen::scrollRight() {
     }
 }
 
-bool Screen::setPixel(uint32_t x, uint32_t y) {
+bool Screen::setPixel(uint32_t x, uint32_t y, bool clipping) {
     // 1. Handle wrapping (standard CHIP-8 behavior)
-    x %= width;
-    y %= height;
-    uint32_t index = x + (y * width);
+
+    uint32_t lWidth = width / (hiRes ? 1 : 2);
+    uint32_t lHeight= height / (hiRes ? 1 : 2);
+    if (clipping) {
+        if (x >= lWidth || y >= lHeight) return false;
+    }
+
+    x %= lWidth;
+    y %= lHeight;
+    uint32_t index = x + (y * lWidth);
 
     // 2. Check if the current pixel is "on" (White)
     // Assuming 0xFFFFFFFF is White and 0x000000FF is Black
@@ -99,10 +124,12 @@ bool Screen::setPixel(uint32_t x, uint32_t y) {
 
 // Update texture after all pixel changes have been made
 void Screen::updateTexture() {
-    for (int i = 0; i < (width * height); ++i) {
+    uint32_t lWidth = width / (hiRes ? 1 : 2);
+    uint32_t lHeight = height / (hiRes ? 1 : 2);
+    for (int i = 0; i < (lWidth * lHeight); ++i) {
         pixels[i] = logicalPixels[i] ? onColor : offColor;
     }
-    SDL_UpdateTexture(texture, NULL, pixels, width * sizeof(uint32_t));
+    SDL_UpdateTexture(texture, NULL, pixels, lWidth * sizeof(uint32_t));
 }
 
 Menu::ScreenAction Screen::draw() {
@@ -154,20 +181,19 @@ Menu::ScreenAction Screen::draw() {
 
             ImGui::SeparatorText("Emulation Settings");
 
-            const char* interpreters[] = { "Chip-8 (Default)", "Super-Chip", "XO-Chip" };
+            const char* interpreters[] = { "Chip-8 (Default)", "Super-Chip" };
             static int interpreter_current = 0;
 
             if (ImGui::Combo("Interpreter", &interpreter_current, interpreters, IM_ARRAYSIZE(interpreters))) {
-                Chip::ChipType chipType;
+                Chip::ChipType chipType = Chip::ChipType::Chip_8;
                 switch (interpreter_current) {
                     case 0: {
                         chipType = Chip::ChipType::Chip_8;
+                        break;
                     }
                     case 1: {
                         chipType = Chip::ChipType::Super_Chip;
-                    }
-                    case 2: {
-                        chipType = Chip::ChipType::XO_Chip;
+                        break;
                     }
                 }
 
@@ -175,10 +201,16 @@ Menu::ScreenAction Screen::draw() {
                     // Chip type changed, switch & reset
                     chip->chipType = chipType;
                     chip->reset();
+                    chip->loadProgram(chip->romPath);
                 }
             }
 
-            ImGui::Checkbox("Use high resolution (128x64)", &hiRes);
+            bool useHiRes = hiRes;
+
+            ImGui::Checkbox("Use high resolution (128x64)", &useHiRes);
+
+            setExtendedMode(useHiRes);
+            updateTexture();
 
             ImGui::SeparatorText("Visuals");
 
@@ -226,13 +258,13 @@ Menu::ScreenAction Screen::draw() {
 
     float menuHeight = ImGui::GetFrameHeight();
 
-    uint8_t resolutionMultiplier = hiRes ? 1 : 2;
+    //uint8_t resolutionMultiplier = hiRes ? 1 : 2;
 
     SDL_FRect outRect;
     outRect.x = 0.0f;
     outRect.y = menuHeight;
-    outRect.w = (float)w * resolutionMultiplier;
-    outRect.h = (float)h * resolutionMultiplier - menuHeight;
+    outRect.w = (float)w;
+    outRect.h = (float)h - menuHeight;
 
     SDL_RenderTexture(renderer, texture, NULL, &outRect);
 

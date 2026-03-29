@@ -86,11 +86,10 @@ bool Menu::handleAction(Menu::ScreenAction action, Chip& chip, Screen& screen) {
             break;
         }
         case Menu::ScreenAction::Reset: {
-            std::string filePath = chip.romPath;
             chip.reset();
             screen.updateTexture();
             screen.draw();
-            chip.loadProgram(filePath);
+            chip.loadProgram(chip.romPath);
             break;
         }
     }

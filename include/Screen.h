@@ -18,7 +18,7 @@ class Screen
 		static const uint16_t windowWidth = 1024;
 		static const uint16_t windowHeight = 512;
 		bool init(Chip& chipPtr);
-		bool setPixel(uint32_t x, uint32_t y);
+		bool setPixel(uint32_t x, uint32_t y, bool clipping);
 		void clear();
 		Menu::ScreenAction draw();
 		void updateTexture();
@@ -26,6 +26,8 @@ class Screen
 		void scrollLeft();
 		void scrollRight();
 		void scrollDown(int n);
+		bool hiRes = false;
+
 
 	private:
 		Chip* chip;
@@ -39,8 +41,6 @@ class Screen
 
 		uint32_t onColor = 0x58A35AFF;
 		uint32_t offColor = 0x101410FF;
-
-		bool hiRes = false;
 
 		bool showSettings = false;
 };
