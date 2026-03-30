@@ -1,4 +1,12 @@
-# Chip-8 Emulator
+<div id="user-content-toc">
+  <ul align="center" style="list-style: none;">
+    <summary>
+      <h1>Chip-8 Emulator</h1>
+      <img src="docs/images/logo_256.png" align="right" width="100">
+    </summary>
+  </ul>
+</div>
+
 A C++ Chip-8 emulator
 
 ## Installation & Running
@@ -12,6 +20,11 @@ A C++ Chip-8 emulator
 
 > [!TIP]
 > Some ROMs use higher resolution displays. The output resolution can be toggled between 64x32 and 128x64 in the Edit menu.
+
+<p align="center">
+  <img src="docs/images/breakout.png" width="40%"> 
+  <img src="docs/images/pong.png" width="40%">
+</p>
 
 ## Building
 ### Clone the repo
